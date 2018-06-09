@@ -222,7 +222,6 @@ class NormalizedOptimizer(optimizers.Optimizer):
         """
         grads = self._optimizer_get_gradients(loss, params)
         grads = [self.normalization_fn(grad) for grad in grads]
-        print("normalized grads !")
         return grads
 
     @interfaces.legacy_get_updates_support
@@ -241,10 +240,12 @@ class NormalizedOptimizer(optimizers.Optimizer):
         # monkey patch `get_gradients`
         self.optimizer.get_gradients = self.get_gradients
 
+        # get the updates
         self.optimizer.get_updates(loss, params)
 
         # undo monkey patch
         self.optimizer.get_gradients = self._optimizer_get_gradients
+
         return self.updates
 
     def set_weights(self, weights):
