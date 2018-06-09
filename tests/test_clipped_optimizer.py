@@ -1,8 +1,8 @@
 from __future__ import print_function
 
+import sys
 import os
 import pytest
-import six
 import numpy as np
 from numpy.testing import assert_allclose
 
@@ -13,6 +13,7 @@ from keras.layers.core import Dense, Activation, Lambda
 from keras.utils.np_utils import to_categorical
 from keras import backend as K
 
+sys.path.append('..')
 from optimizer import ClippedOptimizer
 
 num_classes = 2
