@@ -1,9 +1,14 @@
 # Keras Normalized Optimizers
 [![Build Status](https://travis-ci.org/titu1994/keras-normalized-optimizers.svg?branch=master)](https://travis-ci.org/titu1994/keras-normalized-optimizers)
 
-Keras wrapper class for Normalized Gradient Descent from [kmkolasinski/max-normed-optimizer](https://github.com/kmkolasinski/deep-learning-notes/tree/master/max-normed-optimizer), which can be applied to almost all Keras optimizers.
+Keras wrapper class for Normalized Gradient Descent from [kmkolasinski/max-normed-optimizer](https://github.com/kmkolasinski/deep-learning-notes/tree/master/max-normed-optimizer), which can be applied to almost all Keras optimizers. Partially implements [Block-Normalized Gradient Method: An Empirical Study for Training Deep Neural Network](https://arxiv.org/abs/1707.04822) for all base Keras optimizers, and allows flexibility to choose any normalizing function. It does not implement adaptive learning rates however.
 
-Partially implements [Block-Normalized Gradient Method: An Empirical Study for Training Deep Neural Network](https://arxiv.org/abs/1707.04822) for all base Keras optimizers, and allows flexibility to choose any normalizing function. It does not implement adaptive learning rates however.
+The wrapper class can also be extended to allow Gradient Masking and Gradient Clipping using custom norm metrics.
+
+Wrapper classes :
+
+- `NormalizedOptimizer`: To normalize of gradient by the norm of that gradient.
+- `ClippedOptimizer`: To clip the gradient by the norm of that gradient. Note: Clips by Local Norm only !
 
 # Usage
 
@@ -23,13 +28,13 @@ There are several normalization functions available to the `NormalizedOptimizer`
 
 ```python
 from keras.optimizers import Adam, SGD
-from optimizer import NormalizedOptimizer
+from optimizer import NormalizedOptimizer, ClippedOptimizer
 
 sgd = SGD(0.01, momentum=0.9, nesterov=True)
 sgd = NormalizedOptimizer(sgd, normalization='l2')
 
 adam = Adam(0.001)
-adam = NormalizedOptimizer(adam, normalization='l2')
+adam = ClippedOptimizer(adam, normalization='l2', clipnorm=0.5)
 ```
 
 ## Custom normalizations
@@ -47,8 +52,7 @@ from keras import backend as K
 # dummy normalizer which is basically `avg_l1` normalizer
 def dummy_normalization(grad):
     norm = K.mean(K.abs(grad)) + K.epsilon()
-    normalized_grad = grad / norm
-    return normalized_grad
+    return norm
     
 # give the new normalizer a name
 normalizer_name = 'mean`
@@ -56,12 +60,15 @@ normalizer_name = 'mean`
 NormalizedOptimizer.set_normalization_function(normalizer_name, dummy_normalization)
 
 # now these models can be used just like before
+sgd = SGD(0.1)
+sgd = NormalizedOptimizer(sgd, normalization=normalizer_name)
+
 adam = Adam(0.001)
-adam = NormalizedOptimizer(adam, normalization=normalizer_name)
+adam = ClippedNormalization(adam, normalization=normalizer_name, clipnorm=0.5)
 
 ```
 
-# Results
+# Results for `NormalizedOptimizer`
 ## Convex Optimization
 
 We optimize the loss function : 

@@ -6,163 +6,149 @@ from keras.utils.generic_utils import get_custom_objects
 from keras import backend as K
 
 
-def max_normalization(grad):
+def max_norm(grad):
     """
-    Uses the L-infinity norm to compute the normalized
-    gradient.
+    Computes the L-infinity norm of the gradient.
 
     # Arguments:
         grad: gradient for a variable
 
     # Returns:
-        The normalized gradient
+        The norm of the gradient
     """
     grad_max = K.max(K.abs(grad))
     norm = grad_max + K.epsilon()
-    normalized_grad = grad / norm
-    return normalized_grad
+    return norm
 
 
-def min_max_normalization(grad):
+def min_max_norm(grad):
     """
-    Uses the average of the Max and Min of the absolute
-    values of the gradients to compute the normalized
-    gradient.
+    Computes the average of the Max and Min of the absolute
+    values of the gradients.
 
     # Arguments:
         grad: gradient for a variable
 
     # Returns:
-        The normalized gradient
+        The norm of the gradient
     """
     grad_min = K.min(K.abs(grad))
     grad_max = K.max(K.abs(grad))
     norm = ((grad_max + grad_min) / 2.0) + K.epsilon()
-    normalized_grad = grad / norm
-    return normalized_grad
+    return norm
 
 
-def std_normalization(grad):
+def std_norm(grad):
     """
-    Uses the standard deviation of the gradient to compute
-    the normalized gradient.
+    Computes the standard deviation of the gradient.
 
     # Arguments:
         grad: gradient for a variable
 
     # Returns:
-        The normalized gradient
+        The norm of the gradient
     """
     norm = K.std(grad) + K.epsilon()
-    normalized_grad = grad / norm
-    return normalized_grad
+    return norm
 
 
-def l1_normalization(grad):
+def l1_norm(grad):
     """
-    Uses the L-1 norm of the gradient to compute the normalized
-    gradient.
+    Computes the L-1 norm of the gradient.
 
     # Arguments:
         grad: gradient for a variable
 
     # Returns:
-        The normalized gradient
+        The norm of the gradient
     """
     norm = K.sum(K.abs(grad)) + K.epsilon()
-    normalized_grad = grad / norm
-    return normalized_grad
+    return norm
 
 
-def l2_normalization(grad):
+def l2_norm(grad):
     """
-    Uses the L-2 norm of the gradient to compute the normalized
+    Computes the L-2 norm of the gradient.
+
+    # Arguments:
+        grad: gradient for a variable
+
+    # Returns:
+        The norm of the gradient
+    """
+    norm = K.sqrt(K.sum(K.square(grad))) + K.epsilon()
+    return norm
+
+
+def l1_l2_norm(grad):
+    """
+    Computes the average of the L-1 and L-2 norms of the gradient.
+
+    # Arguments:
+        grad: gradient for a variable
+
+    # Returns:
+        The norm of the gradient
+    """
+    l1 = l1_norm(grad)
+    l2 = l2_norm(grad)
+    norm = ((l1 + l2) / 2.) + K.epsilon()
+    return norm
+
+
+def average_l1_norm(grad):
+    """
+    Computes the average of the L-1 norm (instead of sum) of the
     gradient.
 
     # Arguments:
         grad: gradient for a variable
 
     # Returns:
-        The normalized gradient
-    """
-    normalized_grad = K.l2_normalize(grad)
-    return normalized_grad
-
-
-def l1_l2_normalization(grad):
-    """
-    Uses the average of the L-1 and L-2 norms of the gradient to
-    compute the normalized gradient.
-
-    # Arguments:
-        grad: gradient for a variable
-
-    # Returns:
-        The normalized gradient
-    """
-    l1 = K.sum(K.abs(grad))
-    l2 = K.l2_normalize(grad)
-    norm = ((l1 + l2) / 2.) + K.epsilon()
-    normalized_grad = grad / norm
-    return normalized_grad
-
-
-def average_l1_normalization(grad):
-    """
-    Uses the average of the L-1 norm (instead of sum) to compute
-    the normalized gradient.
-
-    # Arguments:
-        grad: gradient for a variable
-
-    # Returns:
-        The normalized gradient
+        The norm of the gradient
     """
     norm = K.mean(K.abs(grad)) + K.epsilon()
-    normalized_grad = grad / norm
-    return normalized_grad
+    return norm
 
 
-def average_l2_normalization(grad):
+def average_l2_norm(grad):
     """
-    Uses the average of the L-2 norm (instead of sum) to compute
-    the normalized gradient.
+    Computes the average of the L-2 norm (instead of sum) of the
+    gradient.
 
     # Arguments:
         grad: gradient for a variable
 
     # Returns:
-        The normalized gradient
+        The norm of the gradient
     """
     norm = K.sqrt(K.mean(K.square(grad))) + K.epsilon()
-    normalized_grad = grad / norm
-    return normalized_grad
+    return norm
 
 
-def average_l1_l2_normalization(grad):
+def average_l1_l2_norm(grad):
     """
-    Uses the average of the L-1 and L-2 norms (instead of the sum)
+    Computes the average of the L-1 and L-2 norms (instead of the sum)
     to compute the normalized gradient.
 
     # Arguments:
         grad: gradient for a variable
 
     # Returns:
-        The normalized gradient
+        The norm of the gradient
     """
     l1_norm = K.mean(K.abs(grad))
     l2_norm = K.sqrt(K.mean(K.square(grad)))
     norm = ((l1_norm + l2_norm) / 2.) + K.epsilon()
-    normalized_grad = grad / norm
-    return normalized_grad
+    return norm
 
 
-class NormalizedOptimizer(optimizers.Optimizer):
+class OptimizerWrapper(optimizers.Optimizer):
 
-    def __init__(self, optimizer, normalization='l2'):
+    def __init__(self, optimizer):
         """
-        Creates a wrapper for a Keras optimizer such that its gradients are
-        normalized prior to computing the update ops.
+        Base wrapper class for a Keras optimizer such that its gradients are
+        corrected prior to computing the update ops.
 
         Since it is a wrapper optimizer, it must delegate all normal optimizer
         calls to the optimizer that it wraps.
@@ -177,41 +163,33 @@ class NormalizedOptimizer(optimizers.Optimizer):
             normalize the gradients before computing the rest of the
             `get_updates` code.
 
+        # Abstract Methods
+            get_gradients: Must be overridden to support differnt gradient
+                operations.
+
+            get_config: Config needs to be carefully built for serialization.
+
+            from_config: Config must be carefully used to build a Subclass.
+
         # Arguments:
             optimizer: Keras Optimizer or a string. All optimizers other
                 than TFOptimizer are supported. If string, instantiates a
                 default optimizer with that alias.
 
-            normalization: string. Must refer to a normalization function
-                that is available in this modules list of normalization
-                functions. To get all possible normalization functions,
-                use `NormalizedOptimizer.get_normalization_functions()`.
-
         # Raises
-            ValueError: If an incorrect name is supplied for `normalization`,
-                such that the normalization function is not available or not
-                set using `NormalizedOptimizer.set_normalization_functions()`.
-
             NotImplementedError: If `optimizer` is of type `TFOptimizer`.
         """
         if optimizer.__class__.__name__ == 'TFOptimizer':
             raise NotImplementedError('Currently, TFOptimizer is not supported.')
 
-        if normalization not in _NORMS:
-            raise ValueError('`normalization` must be one of %s.\n' 
-                             'Provided was "%s".' % (str(sorted(list(_NORMS.keys()))), normalization))
-
         self.optimizer = optimizers.get(optimizer)
-        self.normalization = normalization
-        self.normalization_fn = _NORMS[normalization]
 
         # patch the `get_gradients` call
         self._optimizer_get_gradients = self.optimizer.get_gradients
 
     def get_gradients(self, loss, params):
         """
-        Compute the gradients of the wrapped Optimizer, then normalize
-        them with the supplied normalization function.
+        Compute the gradients of the wrapped Optimizer.
 
         # Arguments:
             loss: Keras tensor with a single value.
@@ -221,7 +199,6 @@ class NormalizedOptimizer(optimizers.Optimizer):
             A list of normalized gradient tensors
         """
         grads = self._optimizer_get_gradients(loss, params)
-        grads = [self.normalization_fn(grad) for grad in grads]
         return grads
 
     @interfaces.legacy_get_updates_support
@@ -276,8 +253,7 @@ class NormalizedOptimizer(optimizers.Optimizer):
             dictionary of the config
         """
         # properties of NormalizedOptimizer
-        config = {'normalization': self.normalization,
-                  'optimizer_name': self.optimizer.__class__.__name__.lower()}
+        config = {'optimizer_name': self.optimizer.__class__.__name__.lower()}
 
         # optimizer config
         optimizer_config = {'optimizer_config': self.optimizer.get_config()}
@@ -293,24 +269,7 @@ class NormalizedOptimizer(optimizers.Optimizer):
 
     @classmethod
     def from_config(cls, config):
-        """
-        Utilizes the meta data from the config to create a new instance
-        of the optimizer which was wrapped previously, and creates a
-        new instance of this wrapper class.
-
-        # Arguments:
-            config: dictionary of the config
-
-        # Returns:
-            a new instance of NormalizedOptimizer
-        """
-        optimizer_config = {'class_name': config['optimizer_name'],
-                            'config': config['optimizer_config']}
-
-        optimizer = optimizers.get(optimizer_config)
-        normalization = config['normalization']
-
-        return cls(optimizer, normalization)
+        raise NotImplementedError
 
     @classmethod
     def set_normalization_function(cls, name, func):
@@ -340,18 +299,231 @@ class NormalizedOptimizer(optimizers.Optimizer):
         return sorted(list(_NORMS.keys()))
 
 
+class NormalizedOptimizer(OptimizerWrapper):
+
+    def __init__(self, optimizer, normalization='l2'):
+        """
+        Creates a wrapper for a Keras optimizer such that its gradients are
+        normalized prior to computing the update ops.
+
+        Since it is a wrapper optimizer, it must delegate all normal optimizer
+        calls to the optimizer that it wraps.
+
+        Note:
+            This wrapper optimizer monkey-patches the optimizer it wraps such that
+            the call to `get_gradients` will call the gradients of the
+            optimizer and then normalize the list of gradients.
+
+            This is required because Keras calls the optimizer's `get_gradients`
+            method inside `get_updates`, and without this patch, we cannot
+            normalize the gradients before computing the rest of the
+            `get_updates` code.
+
+        # Arguments:
+            optimizer: Keras Optimizer or a string. All optimizers other
+                than TFOptimizer are supported. If string, instantiates a
+                default optimizer with that alias.
+
+            normalization: string. Must refer to a normalization function
+                that is available in this modules list of normalization
+                functions. To get all possible normalization functions,
+                use `NormalizedOptimizer.get_normalization_functions()`.
+
+        # Raises
+            ValueError: If an incorrect name is supplied for `normalization`,
+                such that the normalization function is not available or not
+                set using `NormalizedOptimizer.set_normalization_functions()`.
+
+            NotImplementedError: If `optimizer` is of type `TFOptimizer`.
+        """
+        super(NormalizedOptimizer, self).__init__(optimizer)
+
+        if normalization not in _NORMS:
+            raise ValueError('`normalization` must be one of %s.\n' 
+                             'Provided was "%s".' % (str(sorted(list(_NORMS.keys()))), normalization))
+
+        self.normalization = normalization
+        self.normalization_fn = _NORMS[normalization]
+
+    def get_gradients(self, loss, params):
+        """
+        Compute the gradients of the wrapped Optimizer, then normalize
+        them with the supplied normalization function.
+
+        # Arguments:
+            loss: Keras tensor with a single value.
+            params: List of tensors to optimize
+
+        # Returns:
+            A list of normalized gradient tensors
+        """
+        grads = super(NormalizedOptimizer, self).get_gradients(loss, params)
+        grads = [grad / self.normalization_fn(grad) for grad in grads]
+        return grads
+
+    def get_config(self):
+        """
+        Updates the config of the wrapped optimizer with some meta
+        data about the normalization function as well as the optimizer
+        name so that model saving and loading can take place
+
+        # Returns:
+            dictionary of the config
+        """
+        # properties of NormalizedOptimizer
+        config = {'normalization': self.normalization}
+
+        # optimizer config
+        base_config = super(NormalizedOptimizer, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+    @classmethod
+    def from_config(cls, config):
+        """
+        Utilizes the meta data from the config to create a new instance
+        of the optimizer which was wrapped previously, and creates a
+        new instance of this wrapper class.
+
+        # Arguments:
+            config: dictionary of the config
+
+        # Returns:
+            a new instance of NormalizedOptimizer
+        """
+        optimizer_config = {'class_name': config['optimizer_name'],
+                            'config': config['optimizer_config']}
+
+        optimizer = optimizers.get(optimizer_config)
+        normalization = config['normalization']
+
+        return cls(optimizer, normalization=normalization)
+
+
+class ClippedOptimizer(OptimizerWrapper):
+
+    def __init__(self, optimizer, normalization='l2', clipnorm=1.0):
+        """
+        Creates a wrapper for a Keras optimizer such that its gradients are
+        clipped by the norm prior to computing the update ops.
+
+        Since it is a wrapper optimizer, it must delegate all normal optimizer
+        calls to the optimizer that it wraps.
+
+        Note:
+            This wrapper optimizer monkey-patches the optimizer it wraps such that
+            the call to `get_gradients` will call the gradients of the
+            optimizer and then normalize the list of gradients.
+
+            This is required because Keras calls the optimizer's `get_gradients`
+            method inside `get_updates`, and without this patch, we cannot
+            normalize the gradients before computing the rest of the
+            `get_updates` code.
+
+        # Arguments:
+            optimizer: Keras Optimizer or a string. All optimizers other
+                than TFOptimizer are supported. If string, instantiates a
+                default optimizer with that alias.
+
+            normalization: string. Must refer to a normalization function
+                that is available in this modules list of normalization
+                functions. To get all possible normalization functions,
+                use `NormalizedOptimizer.get_normalization_functions()`.
+
+            clipnorm: float >= 0. Gradients will be clipped
+                when their norm exceeds this value.
+
+        # Raises
+            ValueError: If an incorrect name is supplied for `normalization`,
+                such that the normalization function is not available or not
+                set using `NormalizedOptimizer.set_normalization_functions()`.
+
+            NotImplementedError: If `optimizer` is of type `TFOptimizer`.
+        """
+        super(ClippedOptimizer, self).__init__(optimizer)
+
+        if normalization not in _NORMS:
+            raise ValueError('`normalization` must be one of %s.\n' 
+                             'Provided was "%s".' % (str(sorted(list(_NORMS.keys()))), normalization))
+
+        self.normalization = normalization
+        self.normalization_fn = _NORMS[normalization]
+
+        self.clipnorm = clipnorm
+
+    def get_gradients(self, loss, params):
+        """
+        Compute the gradients of the wrapped Optimizer, then normalize
+        them with the supplied normalization function.
+
+        # Arguments:
+            loss: Keras tensor with a single value.
+            params: List of tensors to optimize
+
+        # Returns:
+            A list of normalized gradient tensors
+        """
+        grads = super(ClippedOptimizer, self).get_gradients(loss, params)
+        grads = [self.clip_grad(grad) for grad in grads]
+        return grads
+
+    def get_config(self):
+        """
+        Updates the config of the wrapped optimizer with some meta
+        data about the normalization function as well as the optimizer
+        name so that model saving and loading can take place
+
+        # Returns:
+            dictionary of the config
+        """
+        # properties of NormalizedOptimizer
+        config = {'normalization': self.normalization,
+                  'clipnorm': self.clipnorm}
+
+        # optimizer config
+        base_config = super(ClippedOptimizer, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+    def clip_grad(self, grad):
+        norm = self.normalization_fn(grad)
+        grad = optimizers.clip_norm(grad, self.clipnorm, norm)
+        return grad
+
+    @classmethod
+    def from_config(cls, config):
+        """
+        Utilizes the meta data from the config to create a new instance
+        of the optimizer which was wrapped previously, and creates a
+        new instance of this wrapper class.
+
+        # Arguments:
+            config: dictionary of the config
+
+        # Returns:
+            a new instance of NormalizedOptimizer
+        """
+        optimizer_config = {'class_name': config['optimizer_name'],
+                            'config': config['optimizer_config']}
+
+        optimizer = optimizers.get(optimizer_config)
+        normalization = config['normalization']
+        clipnorm = config['clipnorm']
+
+        return cls(optimizer, normalization=normalization, clipnorm=clipnorm)
+
+
 _NORMS = {
-    'max': max_normalization,
-    'min_max': min_max_normalization,
-    'l1': l1_normalization,
-    'l2': l2_normalization,
-    'linf': max_normalization,
-    'l1_l2': l1_l2_normalization,
-    'std': std_normalization,
-    'avg_l1': average_l1_normalization,
-    'avg_l2': average_l2_normalization,
-    'avg_l1_l2': average_l1_l2_normalization,
+    'max': max_norm,
+    'min_max': min_max_norm,
+    'l1': l1_norm,
+    'l2': l2_norm,
+    'linf': max_norm,
+    'l1_l2': l1_l2_norm,
+    'std': std_norm,
+    'avg_l1': average_l1_norm,
+    'avg_l2': average_l2_norm,
+    'avg_l1_l2': average_l1_l2_norm,
 }
 
 # register this optimizer to the global custom objects when it is imported
-get_custom_objects().update({'NormalizedOptimizer': NormalizedOptimizer})
+get_custom_objects().update({'NormalizedOptimizer': NormalizedOptimizer,
+                             'ClippedOptimizer': ClippedOptimizer})
