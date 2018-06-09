@@ -1,6 +1,10 @@
 language: python
 matrix:
   include:
+    - python: 2.7
+      env: KERAS_BACKEND=tensorflow
+    - python: 2.7
+      env: KERAS_BACKEND=theano THEANO_FLAGS=optimizer=fast_compile
     - python: 3.6
       env: KERAS_BACKEND=tensorflow
     - python: 3.6
@@ -11,3 +15,5 @@ install:
 # command to run tests
 script:
   - py.test # or py.test for Python versions 3.5 and below
+notifications:
+  email: false

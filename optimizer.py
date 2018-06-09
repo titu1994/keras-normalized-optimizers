@@ -1,6 +1,5 @@
 from __future__ import division
 
-from typing import Union, Callable
 from keras import optimizers
 from keras.legacy import interfaces
 from keras.utils.generic_utils import get_custom_objects
@@ -160,7 +159,7 @@ def average_l1_l2_normalization(grad):
 
 class NormalizedOptimizer(optimizers.Optimizer):
 
-    def __init__(self, optimizer: Union[str, optimizers.Optimizer], normalization: str = 'l2'):
+    def __init__(self, optimizer, normalization='l2'):
         """
         Creates a wrapper for a Keras optimizer such that its gradients are
         normalized prior to computing the update ops.
@@ -307,7 +306,7 @@ class NormalizedOptimizer(optimizers.Optimizer):
         return cls(optimizer, normalization)
 
     @classmethod
-    def set_normalization_function(cls, name: str, func: Callable):
+    def set_normalization_function(cls, name, func):
         """
         Allows the addition of new normalization functions adaptively
 
