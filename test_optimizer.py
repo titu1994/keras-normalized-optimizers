@@ -130,11 +130,7 @@ def test_sgd_normalized_l2():
 def test_sgd_normalized_l1_l2():
     sgd = optimizers.SGD(lr=0.01, momentum=0.9, nesterov=True)
     sgd = NormalizedOptimizer(sgd, normalization='l1_l2')
-
-    if K.backend() == 'theano':
-        _test_optimizer(sgd, target=0.45)
-    else:
-        _test_optimizer(sgd)
+    _test_optimizer(sgd, target=0.45)
     _test_no_grad(sgd)
 
 
