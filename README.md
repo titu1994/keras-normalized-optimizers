@@ -1,5 +1,5 @@
 # Keras Normalized Optimizers
-[![Travis](https://travis-ci.org/titu1994/keras-normalized-optimizers.svg?branch=master&style=flat-square)](https://travis-ci.org/titu1994/keras-normalized-optimizers.svg?branch=master)
+[![Build Status](https://travis-ci.org/titu1994/keras-normalized-optimizers.svg?branch=master)](https://travis-ci.org/titu1994/keras-normalized-optimizers)
 
 Keras wrapper class for Normalized Gradient Descent from [kmkolasinski/max-normed-optimizer](https://github.com/kmkolasinski/deep-learning-notes/tree/master/max-normed-optimizer), which can be applied to almost all Keras optimizers.
 
