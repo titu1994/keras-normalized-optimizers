@@ -227,10 +227,6 @@ def test_add_normalizer():
 
     func_name = 'dummy'
 
-    # check that this function doesnt exist in the normalizers
-    name_list = NormalizedOptimizer.get_normalization_functions()
-    assert func_name not in name_list
-
     # add the function to the name list
     NormalizedOptimizer.set_normalization_function(func_name, dummy_normalization)
 
