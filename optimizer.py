@@ -435,7 +435,7 @@ class ClippedOptimizer(OptimizerWrapper):
         # Raises
             ValueError: If an incorrect name is supplied for `normalization`,
                 such that the normalization function is not available or not
-                set using `NormalizedOptimizer.set_normalization_functions()`.
+                set using `ClippedOptimizer.set_normalization_functions()`.
 
             NotImplementedError: If `optimizer` is of type `TFOptimizer`.
         """
@@ -463,7 +463,7 @@ class ClippedOptimizer(OptimizerWrapper):
             A list of normalized gradient tensors
         """
         grads = super(ClippedOptimizer, self).get_gradients(loss, params)
-        grads = [self.clip_grad(grad) for grad in grads]
+        grads = [self._clip_grad(grad) for grad in grads]
         return grads
 
     def get_config(self):
@@ -483,7 +483,16 @@ class ClippedOptimizer(OptimizerWrapper):
         base_config = super(ClippedOptimizer, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
-    def clip_grad(self, grad):
+    def _clip_grad(self, grad):
+        """
+        Helper method to compute the norm and then clip the gradients.
+
+        # Arguments:
+            grad: gradients of a single variable
+
+        # Returns:
+            clipped gradients
+        """
         norm = self.normalization_fn(grad)
         grad = optimizers.clip_norm(grad, self.clipnorm, norm)
         return grad
