@@ -3,6 +3,7 @@ from __future__ import division
 from typing import Union, Callable
 from keras import optimizers
 from keras.legacy import interfaces
+from keras.utils.generic_utils import get_custom_objects
 from keras import backend as K
 
 
@@ -345,3 +346,6 @@ _NORMS = {
     'avg_l2': average_l2_normalization,
     'avg_l1_l2': average_l1_l2_normalization,
 }
+
+# register this optimizer to the global custom objects when it is imported
+get_custom_objects().update({'NormalizedOptimizer': NormalizedOptimizer})
